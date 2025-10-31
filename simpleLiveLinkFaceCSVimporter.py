@@ -7,7 +7,7 @@ from mathutils import Euler
 
 bl_info = {
     "name": "Simple Live Link Face animator",
-	"version" : (0, 9, 1),
+	"version" : (0, 9, 2),
     "blender": (4, 5, 0),
 	"location" : "View3D",
     "category": "Animation",
@@ -201,20 +201,23 @@ class FindObjectsARKItBlendshapes(bpy.types.Operator):
 
 	def execute(self, context):
 		context.scene.llf_matched_keys = 0
-		matched_shapekeys_dict = dict()
+		context.scene.llf_arkit_data.shape_keys.clear()
 		for obj in context.selected_objects:
-			if obj.type == 'MESH' and hasattr(obj.data.shape_keys, "key_blocks"):
-				# print(obj)
-				shape_key_data = context.scene.llf_arkit_data.shape_keys.add()
-				shape_key_data.name = obj.data.shape_keys.name
-				for sk in obj.data.shape_keys.key_blocks:
-
-					match_arkit_shapekey = match_shapekey(sk.name)
-					
-					if  match_arkit_shapekey:
-						key_block = shape_key_data.key_blocks.add()
-						key_block.name = sk.name
-						context.scene.llf_matched_keys += 1
+			if obj.type in ('MESH', 'CURVE') and obj.data.shape_keys != None:
+				shpk = obj.data.shape_keys
+				# print(shpk.name)
+				if hasattr(obj.data.shape_keys, "key_blocks"):
+					shape_key_data = context.scene.llf_arkit_data.shape_keys.add()
+					shape_key_data.name = shpk.name
+					for sk in obj.data.shape_keys.key_blocks:
+						# print(sk.name)
+						match_arkit_shapekey = match_shapekey(sk.name)
+						
+						if  match_arkit_shapekey:
+							# print('match:')
+							key_block = shape_key_data.key_blocks.add()
+							key_block.name = sk.name
+							context.scene.llf_matched_keys += 1
 
 					else : pass
 		return {"FINISHED"}
@@ -240,7 +243,7 @@ class CSVDataToAnimationKeys(bpy.types.Operator):
 				# print(shape_keys[key])
 				key_blocks = shape_keys[key].key_blocks
 				for kb in key_blocks.keys():
-					# print(kb)
+					print(kb)
 					# set value for shape key and add keyframe it
 					value = csv_data_dict[kb].frames[frame].value
 					key_block = bpy.data.shape_keys[key].key_blocks[kb]
@@ -349,7 +352,7 @@ def unregister():
 	del bpy.types.Scene.llf_frames
 	del bpy.types.Scene.llf_sources
 	del bpy.types.Scene.llf_csv_data
-	del bpy.types.Scene.arkit_data
+	del bpy.types.Scene.llf_arkit_data
 	bpy.utils.unregister_class(CSV_Data_Frames)
 	bpy.utils.unregister_class(CSV_Data_Keys)
 	bpy.utils.unregister_class(CSV_Data)
