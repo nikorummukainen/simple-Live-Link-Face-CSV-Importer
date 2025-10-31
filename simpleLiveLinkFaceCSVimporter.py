@@ -7,13 +7,11 @@ from mathutils import Euler
 
 bl_info = {
     "name": "Simple Live Link Face animator",
-	"version" : (0, 9, 2),
+	"version" : (0, 9, 5),
     "blender": (4, 5, 0),
 	"location" : "View3D",
     "category": "Animation",
 }
-
-
 
 class CSV_Data_Frames(bpy.types.PropertyGroup):
 	value : bpy.props.FloatProperty()
@@ -41,6 +39,33 @@ bpy.utils.register_class(ARKIT_Shape_Keys)
 class ARKIT_Data(bpy.types.PropertyGroup):
 	shape_keys :  bpy.props.CollectionProperty(type=ARKIT_Shape_Keys)
 
+xyz_items = [
+	("Yaw|Pitch|Roll","Yaw|Pitch|Roll","", "", 0),
+	("Yaw|Roll|Pitch","Yaw|Roll|Pitch","", "", 1),
+	("Pitch|Yaw|Roll","Pitch|Yaw|Roll","", "", 2),
+	("Roll|Yaw|Pitch","Roll|Yaw|Pitch","", "", 3),
+	("Roll|Pitch|Yaw","Roll|Pitch|Yaw","", "", 4),
+	("Pitch|Roll|Yaw","Pitch|Roll|Yaw","", "", 5)
+	]
+head_mapping = bpy.props.EnumProperty(
+	name = "mapping",
+	items = xyz_items,
+	default="Pitch|Yaw|Roll",
+	description=""
+	)
+l_eye_mapping = bpy.props.EnumProperty(
+	name = "mapping",
+	items = xyz_items,
+	default="Pitch|Roll|Yaw",
+	description=""
+	)
+r_eye_mapping = bpy.props.EnumProperty(
+	name = "mapping",
+	items = xyz_items,
+	default="Pitch|Roll|Yaw",
+	description=""
+	)
+	
 ''' Properties '''
 csv_filepath = bpy.props.StringProperty(subtype='FILE_PATH')
 matched_keys = bpy.props.IntProperty(default = 0, subtype='UNSIGNED')
@@ -148,6 +173,7 @@ def importcsvtodict(filepath)->dict:
 			csv_dict[k[0].lower()+k[1:]].append(row[k])	
 	return dict(csv_dict)
 
+
 class LoadCSVFileToMemory(bpy.types.Operator):
 	bl_idname = "anim.loadcsvfiletomemory"
 	bl_label = "Load CSV to Memory"
@@ -235,6 +261,9 @@ class CSVDataToAnimationKeys(bpy.types.Operator):
 	def execute(self, context):
 		csv_data_dict = context.scene.llf_csv_data.sources
 		shape_keys = context.scene.llf_arkit_data.shape_keys
+		head_mapping = context.scene.llf_head_bone_mapping.split("|")
+		l_eye_mapping = context.scene.llf_l_eye_bone_mapping.split("|")
+		r_eye_mapping = context.scene.llf_r_eye_bone_mapping.split("|")
 		# for every frame
 		for frame in range(context.scene.llf_frames):			
 			# print(matched_shapekeys_dict.keys())
@@ -255,9 +284,9 @@ class CSVDataToAnimationKeys(bpy.types.Operator):
 			if context.scene.llf_head_bone:
 				bone = context.scene.llf_armature.pose.bones[context.scene.llf_head_bone]
 				rotation_quaternion = Euler((
-					csv_data_dict["headPitch"].frames[frame].value,
-					csv_data_dict["headRoll"].frames[frame].value,
-					csv_data_dict["headYaw"].frames[frame].value
+					csv_data_dict["head"+head_mapping[0]].frames[frame].value,
+					csv_data_dict["head"+head_mapping[1]].frames[frame].value,
+					csv_data_dict["head"+head_mapping[2]].frames[frame].value
 				)).to_quaternion()
 				bone.rotation_quaternion = rotation_quaternion
 				bone.keyframe_insert(data_path="rotation_quaternion", frame=frame+1)
@@ -266,9 +295,9 @@ class CSVDataToAnimationKeys(bpy.types.Operator):
 			if context.scene.llf_left_eye:
 				bone = context.scene.llf_armature.pose.bones[context.scene.llf_left_eye]
 				rotation_quaternion = Euler((
-					csv_data_dict["leftEyePitch"].frames[frame].value,
-					csv_data_dict["leftEyeRoll"].frames[frame].value,
-					csv_data_dict["leftEyeYaw"].frames[frame].value
+					csv_data_dict["leftEye"+l_eye_mapping[0]].frames[frame].value,
+					csv_data_dict["leftEye"+l_eye_mapping[1]].frames[frame].value,
+					csv_data_dict["leftEye"+l_eye_mapping[2]].frames[frame].value
 				)).to_quaternion()
 				bone.rotation_quaternion = rotation_quaternion
 				bone.keyframe_insert(data_path="rotation_quaternion", frame=frame+1)
@@ -276,9 +305,9 @@ class CSVDataToAnimationKeys(bpy.types.Operator):
 			if context.scene.llf_right_eye:
 				bone = context.scene.llf_armature.pose.bones[context.scene.llf_right_eye]
 				rotation_quaternion = Euler((
-					csv_data_dict["rightEyePitch"].frames[frame].value,
-					csv_data_dict["rightEyeRoll"].frames[frame].value,
-					csv_data_dict["rightEyeYaw"].frames[frame].value
+					csv_data_dict["rightEye"+r_eye_mapping[0]].frames[frame].value,
+					csv_data_dict["rightEye"+r_eye_mapping[1]].frames[frame].value,
+					csv_data_dict["rightEye"+r_eye_mapping[2]].frames[frame].value
 				)).to_quaternion()
 				bone.rotation_quaternion = rotation_quaternion
 				bone.keyframe_insert(data_path="rotation_quaternion", frame=frame+1)
@@ -300,10 +329,19 @@ class SimpleLiveLinkFaceCSVImporter_PT_sidebar(bpy.types.Panel):
 		if context.scene.llf_armature:
 			row = layout.row()
 			row.prop_search(context.scene, "llf_head_bone", context.scene.llf_armature.pose, "bones", text="Head")
+			if context.scene.llf_head_bone:
+				row = layout.row()
+				row.prop(context.scene, "llf_head_bone_mapping", expand=False, icon_only=False, text="xyz")
 			row = layout.row()
 			row.prop_search(context.scene, "llf_left_eye", context.scene.llf_armature.pose, "bones", text="Left eye")
+			if context.scene.llf_left_eye:
+				row = layout.row()
+				row.prop(context.scene, "llf_l_eye_bone_mapping", expand=False, icon_only=False, text="xyz")
 			row = layout.row()
 			row.prop_search(context.scene, "llf_right_eye", context.scene.llf_armature.pose, "bones", text="Right eye")
+			if context.scene.llf_right_eye:
+				row = layout.row()
+				row.prop(context.scene, "llf_r_eye_bone_mapping", expand=False, icon_only=False, text="xyz")
 		row = layout.row()
 		row.operator(FindObjectsARKItBlendshapes.bl_idname)
 		row = layout.row()
@@ -337,6 +375,9 @@ def register():
 	bpy.types.Scene.llf_csv_data = bpy.props.PointerProperty(type=CSV_Data)
 	bpy.utils.register_class(ARKIT_Data)
 	bpy.types.Scene.llf_arkit_data = bpy.props.PointerProperty(type=ARKIT_Data)
+	bpy.types.Scene.llf_head_bone_mapping = head_mapping
+	bpy.types.Scene.llf_l_eye_bone_mapping = l_eye_mapping
+	bpy.types.Scene.llf_r_eye_bone_mapping = r_eye_mapping
 
 def unregister():
 	bpy.utils.unregister_class(SimpleLiveLinkFaceCSVImporter_PT_sidebar)
@@ -353,6 +394,9 @@ def unregister():
 	del bpy.types.Scene.llf_sources
 	del bpy.types.Scene.llf_csv_data
 	del bpy.types.Scene.llf_arkit_data
+	del bpy.types.Scene.llf_head_bone_mapping
+	del bpy.types.Scene.llf_l_eye_bone_mapping
+	del bpy.types.Scene.llf_r_eye_bone_mapping
 	bpy.utils.unregister_class(CSV_Data_Frames)
 	bpy.utils.unregister_class(CSV_Data_Keys)
 	bpy.utils.unregister_class(CSV_Data)
@@ -364,4 +408,3 @@ def unregister():
 
 if __name__ == "__main__":
 	register()
-
