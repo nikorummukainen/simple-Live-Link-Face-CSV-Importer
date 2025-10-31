@@ -243,7 +243,7 @@ class CSVDataToAnimationKeys(bpy.types.Operator):
 				# print(shape_keys[key])
 				key_blocks = shape_keys[key].key_blocks
 				for kb in key_blocks.keys():
-					print(kb)
+					# print(kb)
 					# set value for shape key and add keyframe it
 					value = csv_data_dict[kb].frames[frame].value
 					key_block = bpy.data.shape_keys[key].key_blocks[kb]
@@ -364,3 +364,4 @@ def unregister():
 
 if __name__ == "__main__":
 	register()
+
